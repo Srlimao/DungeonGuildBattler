@@ -6,4 +6,3 @@ out/
 .env
 src/renderer/dist/
 src/renderer/node_modules/
-package-lock.json
