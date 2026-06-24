@@ -154,7 +154,8 @@ export default function LobbyPhase() {
     try {
       const res = await window.api.joinLobby(lobbyIdToJoin, { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class });
       if (res.success) {
-        setActiveHero(res.players.find(p => p.id === selectedCharacter.id));
+        const localHero = res.players.find(p => p.id === res.localPlayerId) || res.players.find(p => p.id === selectedCharacter.id);
+        setActiveHero(localHero);
         setLobbyPlayers(res.players);
         setActiveLobbyId(res.lobbyId);
         setIsNetworkMock(res.isMock);
