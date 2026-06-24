@@ -7,6 +7,26 @@ let players = [];
 let nextMockId = 1;
 let steamLobby = null;
 
+function getLocalSteamId() {
+  if (!steamClient) return null;
+  try {
+    const lp = steamClient.localplayer || steamClient.localPlayer || steamClient.localUser;
+    return lp?.getSteamId()?.steamId64?.toString() || null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function getLocalSteamName() {
+  if (!steamClient) return null;
+  try {
+    const lp = steamClient.localplayer || steamClient.localPlayer || steamClient.localUser;
+    return lp?.getName() || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 function generateShortLobbyId() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = 'DG-';
@@ -120,15 +140,16 @@ function setupP2PHandlers(mainWindow) {
       return { success: true, lobbyId, players, isMock: true };
     } else {
       try {
-        const steamId = (steamClient.localPlayer || steamClient.localUser)?.getSteamId()?.steamId64?.toString() || 'steam_host';
-        const steamName = (steamClient.localPlayer || steamClient.localUser)?.getName() || 'Steam Player';
+        const steamId = getLocalSteamId() || 'steam_host';
+        const steamName = getLocalSteamName() || 'Steam Player';
         
         // Create real Steam Lobby
         steamLobby = await steamClient.matchmaking.createLobby(steamClient.matchmaking.LobbyType.Public, 10);
-        lobbyId = generateShortLobbyId();
+        lobbyId = steamLobby.id.toString();
+        const shortId = generateShortLobbyId();
         
         // Store metadata
-        steamLobby.setData('shortId', lobbyId);
+        steamLobby.setData('shortId', shortId);
         steamLobby.setData('lobbyName', customName);
         steamLobby.setData('hostName', steamName);
         steamLobby.setData('hostClass', hostData.class || 'Warrior');
@@ -279,12 +300,13 @@ function setupP2PHandlers(mainWindow) {
           return { success: false, error: "Steam Lobby not found or failed to join." };
         }
         
+        lobbyId = steamLobby.id.toString();
         const hostName = steamLobby.getData('hostName') || 'Steam Host';
         const hostId = steamLobby.getOwner()?.steamId64?.toString() || 'steam_host';
         const hostClass = steamLobby.getData('hostClass') || 'Warrior';
         
-        const steamId = (steamClient.localPlayer || steamClient.localUser)?.getSteamId()?.steamId64?.toString() || 'steam_guest';
-        const steamName = (steamClient.localPlayer || steamClient.localUser)?.getName() || 'Steam Guest';
+        const steamId = getLocalSteamId() || 'steam_guest';
+        const steamName = getLocalSteamName() || 'Steam Guest';
         
         const members = steamLobby.getMembers();
         players = [];
@@ -347,7 +369,7 @@ function setupP2PHandlers(mainWindow) {
         }
 
         console.log(`Successfully joined Steam lobby: ${steamLobby.id.toString()}`);
-        return { success: true, lobbyId: steamLobby.getData('shortId') || steamLobby.id.toString(), players, isMock: false };
+        return { success: true, lobbyId, players, isMock: false };
       } catch (err) {
         console.error("Failed to join Steam lobby:", err);
         return { success: false, error: err.message || "Failed to join Steam lobby" };
@@ -366,11 +388,11 @@ function setupP2PHandlers(mainWindow) {
     // Broadcast to other players via Steam P2P if not mock
     if (!isMock && steamClient && steamLobby) {
       try {
-        const steamIdStr = (steamClient.localPlayer || steamClient.localUser)?.getSteamId()?.steamId64?.toString();
+        const steamIdStr = getLocalSteamId();
         const payload = JSON.stringify({
           type: 'POSITION_UPDATE',
           playerId: steamIdStr,
-          name: (steamClient.localPlayer || steamClient.localUser)?.getName() || 'Steam Player',
+          name: getLocalSteamName() || 'Steam Player',
           class: p ? p.class : 'Warrior',
           x,
           y
@@ -484,13 +506,20 @@ function setupP2PHandlers(mainWindow) {
     }
 
     // Poll for P2P networking packets
-    const steamIdStr = (steamClient.localPlayer || steamClient.localUser)?.getSteamId()?.steamId64?.toString() || 'steam_user';
+    const steamIdStr = getLocalSteamId() || 'steam_user';
     setInterval(() => {
       try {
         let size = steamClient.networking.isP2PPacketAvailable();
         while (size > 0) {
           const packet = steamClient.networking.readP2PPacket(size);
           if (packet && packet.data) {
+            const senderIdStr = packet.steamId.steamId64.toString();
+            const isMember = steamLobby && steamLobby.getMembers().some(m => m.steamId64.toString() === senderIdStr);
+            if (!isMember) {
+              size = steamClient.networking.isP2PPacketAvailable();
+              continue;
+            }
+
             const payload = JSON.parse(packet.data.toString('utf8'));
             if (payload.type === 'POSITION_UPDATE') {
               const hostId = steamLobby ? steamLobby.getOwner()?.steamId64?.toString() : 'host';
@@ -511,7 +540,7 @@ function setupP2PHandlers(mainWindow) {
                   const replyPayload = JSON.stringify({
                     type: 'POSITION_UPDATE',
                     playerId: steamIdStr,
-                    name: (steamClient.localPlayer || steamClient.localUser)?.getName() || 'Steam Player',
+                    name: getLocalSteamName() || 'Steam Player',
                     class: localPlayer.class,
                     x: localPlayer.x,
                     y: localPlayer.y
