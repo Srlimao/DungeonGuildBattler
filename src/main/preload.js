@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('api', {
   environment: 'development',
   
   createLobby: (hostData) => ipcRenderer.invoke('net-create-lobby', hostData),
+  listLobbies: () => ipcRenderer.invoke('net-list-lobbies'),
+  joinLobby: (lobbyId, playerData) => ipcRenderer.invoke('net-join-lobby', { lobbyId, playerData }),
   sendPosition: (playerId, x, y) => ipcRenderer.invoke('net-send-position', { playerId, x, y }),
   simulateJoin: () => ipcRenderer.invoke('net-simulate-join'),
   simulateFriendMove: () => ipcRenderer.invoke('net-simulate-friend-move'),

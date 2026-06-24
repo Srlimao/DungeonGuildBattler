@@ -58,21 +58,23 @@ npm install
 ```
 
 ### Running Development Environment
-To run the project with hot-reloading support, you need to spin up the React development server first, then launch the Electron shell.
+To run both the React Vite development server and the Electron shell together in a single command, run the following from the project root directory:
 
-1. **Start the React dev server**:
-   ```bash
-   cd src/renderer
-   npm run dev
-   ```
-2. **Start the Electron app** (in a separate terminal inside the project root):
-   ```bash
-   npm start
-   ```
+```bash
+npm run dev
+```
+
+This will spin up the Vite development server, wait for it to be active, and automatically launch the Electron window.
 
 ---
 
-## 🔄 Deployment & Updates
+## 🔄 Packaging & Deployment
+
+To compile the React frontend and package the entire desktop application into a distributable installer (located in the `/out` directory), run:
+
+```bash
+npm run build
+```
 
 The project uses a two-phase rollout strategy:
 - **Phase 1: Alpha/Beta Testing (GitHub Releases)**: Updates are polled from GitHub Releases via `electron-updater`.

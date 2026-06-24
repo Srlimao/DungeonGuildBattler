@@ -60,7 +60,9 @@ Because the server now lives inside the Host's Electron app, the folder structur
 │   ├── /renderer              # Electron Renderer Process (Browser/Game)
 │   │   ├── /features          # UI Components
 │   │   │   ├── /lobby
-│   │   │   │   └── LobbyPhase.jsx 
+│   │   │   │   ├── LobbyPhase.jsx 
+│   │   │   │   ├── PlayerList.jsx
+│   │   │   │   └── CharacterSelect.jsx
 │   │   │   └── /loot_draft
 │   │   │       └── LootDraftPhase.jsx
 │   │   ├── /combat_engine     # Phaser/Pixi visualizer
@@ -68,6 +70,7 @@ Because the server now lives inside the Host's Electron app, the folder structur
 │   └── /shared                # Shared constants and data schemas
 ├── package.json
 └── tailwind.config.js
+
 
 ```
 
@@ -87,4 +90,5 @@ The project utilizes a two-phase update strategy to accommodate both alpha testi
 
 -   **Colocation Rule:** Use Tailwind utility classes directly in UI components. No separate CSS files.
 -   **Network Agnosticism in UI:** The React/Vue components should not care if they are communicating with a remote server or the local Host process. They should dispatch generic events (e.g., `AppNetwork.send('VOTE_PATH')`) and let the network layer route it through Steamworks.
+-   **Strict Component Size Limits:** No React/Vue component should exceed 300 lines. If a Phase file grows beyond this, it must be aggressively refactored into smaller sub-components within the same feature folder (e.g., `LobbyPhase.jsx` should act as a container orchestrating smaller `PlayerList.jsx`, `RoomInfo.jsx`, and `CharacterSelect.jsx` components).
 -   **Steam App ID:** Use App ID `480` (Spacewar) during development to test the Steam overlay and lobbies without having to pay the Steam Direct fee yet.
