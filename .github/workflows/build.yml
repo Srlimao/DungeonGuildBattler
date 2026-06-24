@@ -34,6 +34,6 @@ jobs:
         run: npm run build:ui
 
       - name: Build and Publish Electron App
-        run: npx electron-builder --publish always
+        run: npx electron-builder --publish onTagOrDraft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
