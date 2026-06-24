@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function LobbyPortal({ 
   selectedCharacter, 
@@ -8,6 +8,8 @@ export default function LobbyPortal({
   handleJoinLobby, 
   setScreen 
 }) {
+  const [customLobbyId, setCustomLobbyId] = useState('');
+
   return (
     <div className="flex-grow flex flex-col p-10 overflow-hidden">
       <header className="flex justify-between items-center mb-8 flex-shrink-0">
@@ -50,7 +52,7 @@ export default function LobbyPortal({
           </button>
         </div>
 
-        {/* Join Panel (Lobbies list) */}
+        {/* Join Panel (Lobbies list & manual ID join) */}
         <div className="bg-[rgba(18,14,32,0.65)] backdrop-blur-md border border-[rgba(255,255,255,0.07)] hover:border-cyan-500/35 rounded-2xl p-8 flex flex-col overflow-hidden shadow-lg">
           <div className="flex justify-between items-center mb-4 flex-shrink-0">
             <h3 className="font-['Cinzel'] text-2xl font-bold text-white">Browse Active Lobbies</h3>
@@ -59,6 +61,24 @@ export default function LobbyPortal({
               className="text-xs text-cyan-400 hover:text-cyan-300 cursor-pointer flex items-center gap-1"
             >
               🔄 Refresh List
+            </button>
+          </div>
+
+          {/* Join by ID Input */}
+          <div className="mb-6 flex gap-2 flex-shrink-0 bg-black/20 border border-white/5 p-3 rounded-lg">
+            <input 
+              type="text" 
+              placeholder="Paste Lobby ID here (e.g. MOCK_LOBBY_...)" 
+              value={customLobbyId}
+              onChange={(e) => setCustomLobbyId(e.target.value)}
+              className="flex-grow bg-black/45 border border-white/5 focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(6,182,212,0.15)] rounded px-3 py-2 text-xs text-white outline-none"
+            />
+            <button 
+              onClick={() => handleJoinLobby(customLobbyId.trim())}
+              disabled={!customLobbyId.trim()}
+              className="bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 px-4 py-2 rounded text-xs font-bold transition-all duration-200 cursor-pointer"
+            >
+              Connect
             </button>
           </div>
 

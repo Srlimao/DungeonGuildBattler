@@ -4,6 +4,10 @@ on:
   push:
     tags:
       - 'v*' # Triggers on release tags like v0.1.1
+  workflow_dispatch: # Allows manual trigger from Actions tab
+
+permissions:
+  contents: write
 
 jobs:
   release:
