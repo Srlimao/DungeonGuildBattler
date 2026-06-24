@@ -6,6 +6,19 @@
   "scripts": {
     "start": "electron ."
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Srlimao/DungeonGuildBattler.git"
+  },
+  "build": {
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Srlimao",
+        "repo": "DungeonGuildBattler"
+      }
+    ]
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
