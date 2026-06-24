@@ -33,7 +33,12 @@ jobs:
       - name: Build Frontend
         run: npm run build:ui
 
-      - name: Build and Publish Electron App
-        run: npx electron-builder --publish onTagOrDraft
+      - name: Build and Publish Portable App
+        run: npx electron-builder --win portable --publish onTagOrDraft
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Publish NSIS App
+        run: npx electron-builder --win nsis --publish onTagOrDraft
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
