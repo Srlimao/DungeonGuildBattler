@@ -9,6 +9,9 @@ export default function LobbyPortal({
   setScreen 
 }) {
   const [customLobbyId, setCustomLobbyId] = useState('');
+  const [lobbyName, setLobbyName] = useState(
+    selectedCharacter ? `${selectedCharacter.name}'s Guild` : 'New Guild Hall'
+  );
 
   return (
     <div className="flex-grow flex flex-col p-10 overflow-hidden">
@@ -35,17 +38,30 @@ export default function LobbyPortal({
               Initialize a new secure matchmaking lobby. Your local system will act as the authoritative game host. Friends can join you directly via Steam or Mock code.
             </p>
             {selectedCharacter && (
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex items-center gap-4">
-                <div className="text-4xl">🛡️</div>
-                <div>
-                  <div className="text-sm font-bold text-white">{selectedCharacter.name}</div>
-                  <div className="text-xs text-slate-400">Class: {selectedCharacter.class} | Level: {selectedCharacter.level}</div>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 flex flex-col gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="text-4xl">🛡️</div>
+                  <div>
+                    <div className="text-sm font-bold text-white">{selectedCharacter.name}</div>
+                    <div className="text-xs text-slate-400">Class: {selectedCharacter.class} | Level: {selectedCharacter.level}</div>
+                  </div>
+                </div>
+                
+                <div className="border-t border-white/5 pt-3">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Lobby Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="Enter custom lobby name" 
+                    value={lobbyName}
+                    onChange={(e) => setLobbyName(e.target.value)}
+                    className="w-full bg-black/45 border border-white/10 focus:border-violet-500 focus:shadow-[0_0_10px_rgba(139,92,246,0.15)] rounded px-3 py-2 text-xs text-white outline-none"
+                  />
                 </div>
               </div>
             )}
           </div>
           <button 
-            onClick={handleHostLobby}
+            onClick={() => handleHostLobby(lobbyName.trim())}
             className="w-full font-semibold py-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-lg shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer text-center mt-6"
           >
             Create Lobby (Max 10 Players)

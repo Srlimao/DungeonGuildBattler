@@ -109,10 +109,10 @@ export default function LobbyPhase() {
     } catch (e) { console.error(e); }
   };
 
-  const handleHostLobby = async () => {
+  const handleHostLobby = async (lobbyName) => {
     if (!selectedCharacter) return;
     if (!window.api) {
-      const mockLobbyId = 'MOCK_BROWSER_' + Math.floor(Math.random() * 900000 + 100000);
+      const mockLobbyId = 'DG-' + Math.random().toString(36).substring(2, 6).toUpperCase();
       const hostData = { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class, x: 150, y: 200, isHost: true };
       setActiveHero(hostData);
       setLobbyPlayers([hostData]);
@@ -121,7 +121,12 @@ export default function LobbyPhase() {
       return;
     }
     try {
-      const res = await window.api.createLobby({ id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class });
+      const res = await window.api.createLobby({ 
+        id: selectedCharacter.id, 
+        name: selectedCharacter.name, 
+        class: selectedCharacter.class,
+        lobbyName: lobbyName
+      });
       if (res.success) {
         setActiveHero(res.players.find(p => p.isHost));
         setLobbyPlayers(res.players);
@@ -156,6 +161,18 @@ export default function LobbyPhase() {
         setScreen('guild-lobby');
       } else { alert("Failed: " + res.error); }
     } catch (e) { console.error(e); }
+  };
+
+  const handleLeaveLobby = async () => {
+    setActiveLobbyId(null);
+    setScreen('list');
+    if (window.api?.leaveLobby) {
+      try {
+        await window.api.leaveLobby();
+      } catch (e) {
+        console.error(e);
+      }
+    }
   };
 
   const handleGuildHallClick = async (e) => {
@@ -228,7 +245,7 @@ export default function LobbyPhase() {
               </div>
               <p className="text-slate-400 text-sm mt-1">Lobby ID: <span className="text-cyan-400 font-mono font-semibold">{activeLobbyId}</span></p>
             </div>
-            <button onClick={() => { setActiveLobbyId(null); setScreen('list'); }} className="px-5 py-2 bg-red-950/20 border border-red-900/40 text-red-300 hover:text-white hover:bg-red-900/40 rounded transition-all duration-200 cursor-pointer">Leave Party</button>
+            <button onClick={handleLeaveLobby} className="px-5 py-2 bg-red-950/20 border border-red-900/40 text-red-300 hover:text-white hover:bg-red-900/40 rounded transition-all duration-200 cursor-pointer">Leave Party</button>
           </header>
 
           <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 min-h-0">

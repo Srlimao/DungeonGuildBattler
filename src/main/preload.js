@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
   sendPosition: (playerId, x, y) => ipcRenderer.invoke('net-send-position', { playerId, x, y }),
   simulateJoin: () => ipcRenderer.invoke('net-simulate-join'),
   simulateFriendMove: () => ipcRenderer.invoke('net-simulate-friend-move'),
+  leaveLobby: () => ipcRenderer.invoke('net-leave-lobby'),
   
   onPlayersUpdate: (callback) => {
     const handler = (event, players) => callback(players);
