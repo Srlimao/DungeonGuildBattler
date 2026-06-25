@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import CharacterSelect from './CharacterSelect';
 import LobbyPortal from './LobbyPortal';
 import PlayerList from './PlayerList';
 import CombatPhase from '../combat/CombatPhase';
-import { AppNetwork } from '../../services/AppNetwork';
+import GuildHallCanvas from './GuildHallCanvas';
+import { LobbyNetwork } from './LobbyNetwork';
+import { CombatNetwork } from '../combat/CombatNetwork';
 
 const CLASS_PRESETS = {
   Warrior: { hp: 140, atk: 18, def: 15, spd: 7, description: "Heavy frontline defender with high health and physical power.", icon: "⚔️", maxHp: 200, maxAtk: 30, maxDef: 30, maxSpd: 20, colorClass: "text-amber-400" },
@@ -13,28 +15,23 @@ const CLASS_PRESETS = {
 };
 
 export default function LobbyPhase() {
-  const [screen, setScreen] = useState('welcome'); // 'welcome' | 'list' | 'create' | 'lobby-portal' | 'guild-lobby'
+  const [screen, setScreen] = useState('welcome');
   const [characters, setCharacters] = useState([]);
   const [selectedClass, setSelectedClass] = useState('Warrior');
   const [charName, setCharName] = useState('');
   const [validationMsg, setValidationMsg] = useState('');
   const [removingIds, setRemovingIds] = useState(new Set());
 
-  // Lobby Portal Browse & Guest states
   const [availableLobbies, setAvailableLobbies] = useState([]);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
 
-  // Active Lobby players & host states
   const [activeLobbyId, setActiveLobbyId] = useState(null);
   const [lobbyPlayers, setLobbyPlayers] = useState([]);
   const [activeHero, setActiveHero] = useState(null);
   const [isNetworkMock, setIsNetworkMock] = useState(true);
 
-  // Auto-Updater status state
   const [updateInfo, setUpdateInfo] = useState(null);
   const [combatData, setCombatData] = useState(null);
-
-  const guildHallRef = useRef(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('guild_characters');
@@ -44,13 +41,13 @@ export default function LobbyPhase() {
   }, []);
 
   useEffect(() => {
-    const unsubPlayers = AppNetwork.onPlayersUpdate((updatedPlayers) => {
+    const unsubPlayers = LobbyNetwork.onPlayersUpdate((updatedPlayers) => {
       setLobbyPlayers(updatedPlayers);
     });
-    const unsubUpdate = AppNetwork.onUpdateStatus((info) => {
+    const unsubUpdate = LobbyNetwork.onUpdateStatus((info) => {
       setUpdateInfo(info);
     });
-    const unsubGameState = AppNetwork.onGameStateChange((data) => {
+    const unsubGameState = CombatNetwork.onGameStateChange((data) => {
       if (data.screen === 'combat') {
         setCombatData(data.combatData);
         setScreen('combat');
@@ -101,7 +98,7 @@ export default function LobbyPhase() {
 
   const fetchLobbies = async () => {
     try {
-      const list = await AppNetwork.listLobbies();
+      const list = await LobbyNetwork.listLobbies();
       setAvailableLobbies(list || []);
     } catch (e) { console.error(e); }
   };
@@ -109,7 +106,7 @@ export default function LobbyPhase() {
   const handleHostLobby = async (lobbyName) => {
     if (!selectedCharacter) return;
     try {
-      const res = await AppNetwork.createLobby({ 
+      const res = await LobbyNetwork.createLobby({ 
         id: selectedCharacter.id, 
         name: selectedCharacter.name, 
         class: selectedCharacter.class,
@@ -128,7 +125,7 @@ export default function LobbyPhase() {
   const handleJoinLobby = async (lobbyIdToJoin) => {
     if (!selectedCharacter) return;
     try {
-      const res = await AppNetwork.joinLobby(lobbyIdToJoin, { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class });
+      const res = await LobbyNetwork.joinLobby(lobbyIdToJoin, { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class });
       if (res.success) {
         const localHero = res.players.find(p => p.id === res.localPlayerId) || res.players.find(p => p.id === selectedCharacter.id);
         setActiveHero(localHero);
@@ -144,20 +141,17 @@ export default function LobbyPhase() {
     setActiveLobbyId(null);
     setScreen('list');
     try {
-      await AppNetwork.leaveLobby();
+      await LobbyNetwork.leaveLobby();
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleGuildHallClick = async (e) => {
-    if (!activeHero || !guildHallRef.current) return;
-    const rect = guildHallRef.current.getBoundingClientRect();
-    const clickX = Math.max(20, Math.min(Math.round(e.clientX - rect.left), rect.width - 20));
-    const clickY = Math.max(20, Math.min(Math.round(e.clientY - rect.top), rect.height - 20));
+  const handleMoveHero = async (clickX, clickY) => {
+    if (!activeHero) return;
     setLobbyPlayers(prev => prev.map(p => p.id === activeHero.id ? { ...p, x: clickX, y: clickY } : p));
     try {
-      await AppNetwork.sendPosition(activeHero.id, clickX, clickY);
+      await LobbyNetwork.sendPosition(activeHero.id, clickX, clickY);
     } catch (err) {
       console.error(err);
     }
@@ -172,7 +166,7 @@ export default function LobbyPhase() {
     if (!localHeroInLobby) return;
     const newReady = !isReady;
     try {
-      await AppNetwork.sendReady(localHeroInLobby.id, newReady);
+      await LobbyNetwork.sendReady(localHeroInLobby.id, newReady);
       setLobbyPlayers(prev => prev.map(p => p.id === localHeroInLobby.id ? { ...p, ready: newReady } : p));
     } catch (e) {
       console.error(e);
@@ -181,7 +175,7 @@ export default function LobbyPhase() {
 
   const handleEnterDungeon = async () => {
     try {
-      await AppNetwork.startCombat();
+      await CombatNetwork.startCombat();
     } catch (e) {
       console.error(e);
     }
@@ -189,7 +183,7 @@ export default function LobbyPhase() {
 
   const handleReturnToLobby = async () => {
     try {
-      await AppNetwork.returnToLobby();
+      await CombatNetwork.returnToLobby();
     } catch (e) {
       console.error(e);
     }
@@ -197,7 +191,7 @@ export default function LobbyPhase() {
 
   const addSimulatedFriend = async () => {
     try {
-      const res = await AppNetwork.simulateJoin();
+      const res = await LobbyNetwork.simulateJoin();
       if (res.success) setLobbyPlayers(res.players);
     } catch (e) { console.error(e); }
   };
@@ -213,7 +207,7 @@ export default function LobbyPhase() {
             {updateInfo.status === 'downloaded' && <span>Update v{updateInfo.version} downloaded successfully!</span>}
           </div>
           {updateInfo.status === 'downloaded' && (
-            <button onClick={() => AppNetwork.installUpdate()} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1 rounded transition-colors duration-200 cursor-pointer">Restart & Install</button>
+            <button onClick={() => LobbyNetwork.installUpdate()} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1 rounded transition-colors duration-200 cursor-pointer">Restart & Install</button>
           )}
         </div>
       )}
@@ -276,28 +270,12 @@ export default function LobbyPhase() {
                 {isNetworkMock && <button onClick={addSimulatedFriend} className="px-3 py-1 bg-violet-900/40 hover:bg-violet-900/70 border border-violet-800/40 text-violet-300 hover:text-white rounded text-xs font-bold transition-all duration-200 cursor-pointer">Simulate Friend Join</button>}
               </div>
 
-              <div ref={guildHallRef} onClick={handleGuildHallClick} className="flex-grow bg-slate-950/80 border border-violet-950/60 rounded-xl relative overflow-hidden bg-[radial-gradient(#ffffff05_1px,transparent_1px)] [background-size:24px_24px] cursor-crosshair shadow-inner">
-                <div className="absolute top-[30%] left-[45%] w-32 h-32 rounded-full border border-violet-500/5 bg-violet-500/[0.01] flex items-center justify-center pointer-events-none">
-                  <span className="text-xs text-violet-500/20 font-['Cinzel'] tracking-wider">Muster Circle</span>
-                </div>
-
-                {lobbyPlayers.map(p => {
-                  const presetData = CLASS_PRESETS[p.class] || CLASS_PRESETS.Warrior;
-                  return (
-                    <div key={p.id} className="absolute w-12 h-12 -ml-6 -mt-6 flex flex-col items-center select-none" style={{ left: `${p.x}px`, top: `${p.y}px`, transition: 'left 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94), top 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)' }}>
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl bg-slate-900 border-2 shadow-lg relative group ${p.isHost ? 'border-amber-400 shadow-amber-500/10' : 'border-violet-500'}`}>
-                        {presetData.icon}
-                        {p.isHost && <span className="absolute -top-3.5 text-xs text-amber-400 drop-shadow">👑</span>}
-                        {p.ready && (
-                          <span className="absolute -bottom-1 -right-1 text-[9px] bg-emerald-500 text-white rounded-full w-4 h-4 flex items-center justify-center border border-slate-900 font-black shadow shadow-emerald-500/30">✓</span>
-                        )}
-                        <div className="absolute bottom-11 scale-0 group-hover:scale-100 bg-slate-900 border border-slate-700/60 text-[10px] px-2 py-0.5 rounded text-white font-semibold whitespace-nowrap shadow-md transition-all duration-150 z-20 pointer-events-none">{p.name}</div>
-                      </div>
-                      <span className="text-[10px] text-slate-300 font-semibold bg-black/65 px-1.5 py-0.2 rounded mt-1 shadow-sm whitespace-nowrap">{p.name.split(' ')[0]}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              <GuildHallCanvas 
+                lobbyPlayers={lobbyPlayers} 
+                presets={CLASS_PRESETS} 
+                activeHero={localHeroInLobby} 
+                onMove={handleMoveHero} 
+              />
             </div>
 
             <PlayerList lobbyPlayers={lobbyPlayers} presets={CLASS_PRESETS} />
@@ -307,7 +285,6 @@ export default function LobbyPhase() {
       {screen === 'combat' && combatData && (
         <CombatPhase 
           combatData={combatData} 
-          lobbyPlayers={lobbyPlayers} 
           localPlayer={localHeroInLobby} 
           onReturnToLobby={handleReturnToLobby} 
         />

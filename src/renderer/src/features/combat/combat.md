@@ -1,77 +1,34 @@
 # Combat Phase - Technical Documentation
 
-This module defines the client-side visualization of the host-authoritative combat logs. The combat simulation runs instantly on the host's system and produces a deterministic list of chronological events. The client's job is to play these events back with a slight delay, simulating a real-time battle.
+This module defines the client-side JRPG-style visualization of the host-authoritative combat. The combat simulation runs instantly on the host's system and produces a deterministic list of chronological events. The client plays these events back with a slight delay, visualizing a classic JRPG real-time active battle.
 
-## Combat Event Types & Schema
+## Component Architecture
 
-Each combat log event has a specific structure depending on the action type.
+To maintain clean context and comply with strict 300-line limitations, the Combat Phase is split into localized sub-components:
 
-### 1. Attack / Spell / Critical Hits
-Occurs when a player hero strikes the boss monster.
-```json
-{
-  "type": "attack" | "spell" | "crit",
-  "actor": "Kaelen",
-  "actorClass": "Mage",
-  "target": "Cinder Claw the Red Drake",
-  "value": 32,
-  "bossHp": 268,
-  "text": "Kaelen (Mage) casts Fireball on Cinder Claw the Red Drake dealing 32 magic damage!"
-}
-```
+1.  **`CombatPhase.jsx`**
+    *   **Role**: Primary controller shell.
+    *   **Responsibilities**: Handles P2P networking hooks (`CombatNetwork` subscriptions), combat state, cooldown timers, active combos, and delegates layout rendering.
+2.  **`CombatBattleground.jsx`**
+    *   **Role**: Visual battle area.
+    *   **Responsibilities**: Positions the Boss on the left/center-left, and staggers party members diagonally on the right in classic JRPG battle formation. Handles idle breathing, shake damage impacts, and floating status texts.
+3.  **`CombatRetroMenu.jsx`**
+    *   **Role**: Retro command & status panel.
+    *   **Responsibilities**: Renders the Final Fantasy double-bordered blue HUD. The left column lists combat commands (auto-attack tag and active skill castings with mana/cooldown timers). The right column shows real-time party metrics (names, HP/MP fractional readouts, and retro progress bars).
+4.  **`CombatVictoryDefeatOverlay.jsx`**
+    *   **Role**: End-game pop-up.
+    *   **Responsibilities**: Displays the victory celebration or defeat card in retro theme with returning lobby actions.
 
-### 2. Healing
-Occurs when a Cleric heals a damaged hero.
-```json
-{
-  "type": "heal",
-  "actor": "Sylvia",
-  "actorClass": "Cleric",
-  "target": "Soren",
-  "value": 18,
-  "targetHp": 128,
-  "text": "Sylvia (Cleric) casts Holy Light on Soren, restoring 18 HP!"
-}
-```
+## Styling & Animations
 
-### 3. Boss Attack
-Occurs when the boss strikes a random hero.
-```json
-{
-  "type": "boss_attack",
-  "actor": "Cinder Claw the Red Drake",
-  "target": "Soren",
-  "targetClass": "Warrior",
-  "value": 15,
-  "targetHp": 85,
-  "text": "👹 Cinder Claw strikes Soren for 15 damage!"
-}
-```
+The JRPG theme utilizes custom styles loaded via `index.css`:
 
-### 4. Player Death
-Occurs immediately when a hero's HP falls to 0.
-```json
-{
-  "type": "death",
-  "target": "Lira",
-  "targetClass": "Rogue",
-  "text": "💀 Lira has fallen in battle!"
-}
-```
+*   **Retro Typography**: Loaded Google Font `'Press Start 2P'` selectively for combat numbers, HP/MP metrics, headers, and commands to maintain readability.
+*   **Blue Window Style (`.ff-window`)**: Styled double-bordered classic blue gradient dialog panels.
+*   **Grid Background (`.jrpg-battleground`)**: Styled with a grid layout representing a tactical arena floor.
+*   **Combat Animations**:
+    *   `animate-float-fade`: Animates floating damage `-12 DMG` / healing `+15 HP` texts scaling and fading upwards.
+    *   `animate-breathe`: Idle breathing vertical scale/translate changes.
+    *   `animate-shake`: Sudden X-axis translation shake triggered upon receiving damage.
+    *   `animate-combo-pulse`: Glowing gold border transitions when active skills are primed for party combos.
 
-### 5. Resolution (Victory / Defeat)
-Triggers the conclusion screen and displays final overlays.
-```json
-{
-  "type": "victory" | "defeat",
-  "text": "🏆 Cinder Claw has been vanquished! Victory is ours!"
-}
-```
-
-## Animation Loop & Visual Effects
-
-To create a premium feel, the client iterates over the events queue:
-- **Ticker Interval**: Moves forward in the event queue every `1200ms` - `1500ms`.
-- **Floating Damage/Healing Texts**: When a player receives damage or healing, a temporary animating span is created overlaying their profile card (e.g. red `-18` or green `+15`) that floats upwards and fades out.
-- **Card Impact Flash**: When a participant takes damage, their card borders flash red briefly.
-- **Scroll Control**: The scrolling console log automatically keeps scrolled to the bottom as new lines print.
