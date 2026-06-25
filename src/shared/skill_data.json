@@ -1,0 +1,114 @@
+{
+  "Warrior": [
+    {
+      "id": "warrior_auto",
+      "name": "Sword Swing",
+      "manaCost": 0,
+      "cooldown": 2000,
+      "baseDmg": 10,
+      "primeTag": null,
+      "executeTag": null,
+      "primeDuration": 0,
+      "comboBonusDmg": 0,
+      "icon": "⚔️",
+      "isAutoAttack": true
+    },
+    {
+      "id": "warrior_active",
+      "name": "Shield Slam",
+      "manaCost": 15,
+      "cooldown": 5000,
+      "baseDmg": 18,
+      "primeTag": "Physical",
+      "executeTag": "Physical",
+      "primeDuration": 4000,
+      "comboBonusDmg": 15,
+      "icon": "🛡️",
+      "isAutoAttack": false
+    }
+  ],
+  "Mage": [
+    {
+      "id": "mage_auto",
+      "name": "Arcane Bolt",
+      "manaCost": 0,
+      "cooldown": 1800,
+      "baseDmg": 8,
+      "primeTag": null,
+      "executeTag": null,
+      "primeDuration": 0,
+      "comboBonusDmg": 0,
+      "icon": "🔮",
+      "isAutoAttack": true
+    },
+    {
+      "id": "mage_active",
+      "name": "Fireball",
+      "manaCost": 20,
+      "cooldown": 6000,
+      "baseDmg": 24,
+      "primeTag": "Fire",
+      "executeTag": "Fire",
+      "primeDuration": 4000,
+      "comboBonusDmg": 22,
+      "icon": "🔥",
+      "isAutoAttack": false
+    }
+  ],
+  "Rogue": [
+    {
+      "id": "rogue_auto",
+      "name": "Dagger Stab",
+      "manaCost": 0,
+      "cooldown": 1500,
+      "baseDmg": 12,
+      "primeTag": null,
+      "executeTag": null,
+      "primeDuration": 0,
+      "comboBonusDmg": 0,
+      "icon": "🗡️",
+      "isAutoAttack": true
+    },
+    {
+      "id": "rogue_active",
+      "name": "Ice Strike",
+      "manaCost": 15,
+      "cooldown": 4500,
+      "baseDmg": 20,
+      "primeTag": "Cold",
+      "executeTag": "Cold",
+      "primeDuration": 4000,
+      "comboBonusDmg": 18,
+      "icon": "❄️",
+      "isAutoAttack": false
+    }
+  ],
+  "Cleric": [
+    {
+      "id": "cleric_auto",
+      "name": "Mace Bonk",
+      "manaCost": 0,
+      "cooldown": 2200,
+      "baseDmg": 7,
+      "primeTag": null,
+      "executeTag": null,
+      "primeDuration": 0,
+      "comboBonusDmg": 0,
+      "icon": "🔨",
+      "isAutoAttack": true
+    },
+    {
+      "id": "cleric_active",
+      "name": "Holy Bolt",
+      "manaCost": 25,
+      "cooldown": 7000,
+      "baseDmg": 14,
+      "primeTag": "Lightning",
+      "executeTag": "Lightning",
+      "primeDuration": 4000,
+      "comboBonusDmg": 20,
+      "icon": "⚡",
+      "isAutoAttack": false
+    }
+  ]
+}

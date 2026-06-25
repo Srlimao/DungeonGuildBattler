@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
   sendPosition: (playerId, x, y) => ipcRenderer.invoke('net-send-position', { playerId, x, y }),
   sendReady: (playerId, ready) => ipcRenderer.invoke('net-send-ready', { playerId, ready }),
   startCombat: (combatData) => ipcRenderer.invoke('net-start-combat', { combatData }),
+  castSkill: (playerId, skillId) => ipcRenderer.invoke('net-cast-skill', { playerId, skillId }),
   returnToLobby: () => ipcRenderer.invoke('net-return-to-lobby'),
   simulateJoin: () => ipcRenderer.invoke('net-simulate-join'),
   simulateFriendMove: () => ipcRenderer.invoke('net-simulate-friend-move'),
@@ -25,6 +26,24 @@ contextBridge.exposeInMainWorld('api', {
     const handler = (event, data) => callback(data);
     ipcRenderer.on('net-game-state-change', handler);
     return () => ipcRenderer.removeListener('net-game-state-change', handler);
+  },
+  
+  onCombatEvent: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('net-combat-event', handler);
+    return () => ipcRenderer.removeListener('net-combat-event', handler);
+  },
+
+  onCombatStateUpdate: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('net-combat-state-update', handler);
+    return () => ipcRenderer.removeListener('net-combat-state-update', handler);
+  },
+
+  onCombatResolve: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('net-combat-resolve', handler);
+    return () => ipcRenderer.removeListener('net-combat-resolve', handler);
   },
   
   onUpdateStatus: (callback) => {
