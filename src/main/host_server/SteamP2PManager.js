@@ -94,7 +94,6 @@ class SteamP2PManager {
       
       MOCK_LOBBIES.push({
         id: this.lobbyId,
-        shortId: this.lobbyId,
         name: customName,
         hostName: hostPlayer.name,
         memberCount: 1,
@@ -111,10 +110,9 @@ class SteamP2PManager {
         
         // Create real Steam Lobby
         this.steamLobby = await this.steamClient.matchmaking.createLobby(this.steamClient.matchmaking.LobbyType.Public, 10);
-        this.lobbyId = this.generateShortLobbyId();
+        this.lobbyId = this.steamLobby.id.toString();
         
         // Store metadata
-        this.steamLobby.setData('shortId', this.lobbyId);
         this.steamLobby.setData('lobbyName', customName);
         this.steamLobby.setData('hostName', steamName);
         this.steamLobby.setData('hostClass', hostData.class || 'Warrior');
@@ -130,7 +128,7 @@ class SteamP2PManager {
         };
         this.players = [hostPlayer];
 
-        console.log(`Steam Lobby created: ${this.lobbyId} (Steam ID: ${this.steamLobby.id.toString()})`);
+        console.log(`Steam Lobby created: (Steam ID: ${this.lobbyId})`);
         return { success: true, lobbyId: this.lobbyId, players: this.players, isMock: false, localPlayerId: steamId };
       } catch (err) {
         console.error("Steam Lobby creation failed. Falling back to Mock.", err);
@@ -141,7 +139,6 @@ class SteamP2PManager {
 
         MOCK_LOBBIES.push({
           id: this.lobbyId,
-          shortId: this.lobbyId,
           name: customName,
           hostName: hostPlayer.name,
           memberCount: 1,
@@ -168,22 +165,18 @@ class SteamP2PManager {
         const steamLobbies = await this.steamClient.matchmaking.getLobbies();
         const results = [];
         for (const l of steamLobbies) {
-          const shortId = l.getData('shortId');
           const lobbyName = l.getData('lobbyName') || `${l.getData('hostName') || 'Steam'}'s Guild`;
           const hostName = l.getData('hostName') || 'Steam Player';
           const memberCount = Number(l.getMemberCount() || 1n);
           const maxPlayers = Number(l.getMemberLimit() || 10n);
           
-          if (shortId) {
-            results.push({
-              id: l.id.toString(), // The actual Steam Lobby ID to join
-              shortId: shortId,
-              name: lobbyName,
-              hostName: hostName,
-              memberCount: memberCount,
-              maxPlayers: maxPlayers
-            });
-          }
+          results.push({
+            id: l.id.toString(), // The actual Steam Lobby ID to join
+            name: lobbyName,
+            hostName: hostName,
+            memberCount: memberCount,
+            maxPlayers: maxPlayers
+          });
         }
         return results;
       } catch (e) {
@@ -195,11 +188,10 @@ class SteamP2PManager {
 
   async joinLobby(targetLobbyId, playerData) {
     if (this.isMock) {
-      // Support matching by standard id or shortId (case-insensitive for easier pasting)
+      // Support matching by standard id (case-insensitive for easier pasting)
       const query = (targetLobbyId || '').toUpperCase().trim();
       const match = MOCK_LOBBIES.find(l => 
-        (l.id && l.id.toUpperCase() === query) || 
-        (l.shortId && l.shortId.toUpperCase() === query)
+        l.id && l.id.toUpperCase() === query
       );
       if (!match) return { success: false, error: "Lobby not found" };
 
@@ -241,8 +233,7 @@ class SteamP2PManager {
         
         const steamLobbies = await this.steamClient.matchmaking.getLobbies();
         for (const l of steamLobbies) {
-          const shortId = l.getData('shortId');
-          if (l.id.toString() === query || (shortId && shortId.toUpperCase() === query)) {
+          if (l.id.toString() === query) {
             lobbyToJoin = l;
             break;
           }
@@ -336,8 +327,9 @@ class SteamP2PManager {
           }
         }
 
-        console.log(`Successfully joined Steam lobby: ${this.steamLobby.id.toString()}`);
-        return { success: true, lobbyId: this.steamLobby.getData('shortId') || this.steamLobby.id.toString(), players: this.players, isMock: false, localPlayerId: steamId };
+        this.lobbyId = this.steamLobby.id.toString();
+        console.log(`Successfully joined Steam lobby: ${this.lobbyId}`);
+        return { success: true, lobbyId: this.lobbyId, players: this.players, isMock: false, localPlayerId: steamId };
       } catch (err) {
         console.error("Failed to join Steam lobby:", err);
         return { success: false, error: err.message || "Failed to join Steam lobby" };
