@@ -113,6 +113,7 @@ class SteamP2PManager {
         this.lobbyId = this.steamLobby.id.toString();
         
         // Store metadata
+        this.steamLobby.setData('gameId', 'DungeonGuildBattler');
         this.steamLobby.setData('lobbyName', customName);
         this.steamLobby.setData('hostName', steamName);
         this.steamLobby.setData('hostClass', hostData.class || 'Warrior');
@@ -165,6 +166,9 @@ class SteamP2PManager {
         const steamLobbies = await this.steamClient.matchmaking.getLobbies();
         const results = [];
         for (const l of steamLobbies) {
+          if (l.getData('gameId') !== 'DungeonGuildBattler') {
+            continue;
+          }
           const lobbyName = l.getData('lobbyName') || `${l.getData('hostName') || 'Steam'}'s Guild`;
           const hostName = l.getData('hostName') || 'Steam Player';
           const memberCount = Number(l.getMemberCount() || 1n);
