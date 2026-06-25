@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import CharacterSelect from './CharacterSelect';
 import LobbyPortal from './LobbyPortal';
 import PlayerList from './PlayerList';
+import CombatPhase from '../combat/CombatPhase';
 import { AppNetwork } from '../../services/AppNetwork';
 
 const CLASS_PRESETS = {
@@ -31,6 +32,7 @@ export default function LobbyPhase() {
 
   // Auto-Updater status state
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [combatData, setCombatData] = useState(null);
 
   const guildHallRef = useRef(null);
 
@@ -48,9 +50,19 @@ export default function LobbyPhase() {
     const unsubUpdate = AppNetwork.onUpdateStatus((info) => {
       setUpdateInfo(info);
     });
+    const unsubGameState = AppNetwork.onGameStateChange((data) => {
+      if (data.screen === 'combat') {
+        setCombatData(data.combatData);
+        setScreen('combat');
+      } else if (data.screen === 'guild-lobby') {
+        setScreen('guild-lobby');
+        setCombatData(null);
+      }
+    });
     return () => {
       unsubPlayers();
       unsubUpdate();
+      unsubGameState();
     };
   }, []);
 
@@ -151,6 +163,38 @@ export default function LobbyPhase() {
     }
   };
 
+  const localHeroInLobby = lobbyPlayers.find(p => p.id === selectedCharacter?.id) || activeHero;
+  const isReady = localHeroInLobby?.ready || false;
+  const isHost = localHeroInLobby?.isHost || false;
+  const canEnterDungeon = isHost && (lobbyPlayers.length === 1 || lobbyPlayers.filter(p => !p.isHost).every(p => p.ready));
+
+  const handleToggleReady = async () => {
+    if (!localHeroInLobby) return;
+    const newReady = !isReady;
+    try {
+      await AppNetwork.sendReady(localHeroInLobby.id, newReady);
+      setLobbyPlayers(prev => prev.map(p => p.id === localHeroInLobby.id ? { ...p, ready: newReady } : p));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleEnterDungeon = async () => {
+    try {
+      await AppNetwork.startCombat();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleReturnToLobby = async () => {
+    try {
+      await AppNetwork.returnToLobby();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const addSimulatedFriend = async () => {
     try {
       const res = await AppNetwork.simulateJoin();
@@ -203,7 +247,26 @@ export default function LobbyPhase() {
               </div>
               <p className="text-slate-400 text-sm mt-1">Lobby ID: <span className="text-cyan-400 font-mono font-semibold">{activeLobbyId}</span></p>
             </div>
-            <button onClick={handleLeaveLobby} className="px-5 py-2 bg-red-950/20 border border-red-900/40 text-red-300 hover:text-white hover:bg-red-900/40 rounded transition-all duration-200 cursor-pointer">Leave Party</button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleToggleReady} 
+                className={`px-5 py-2 font-bold text-xs uppercase rounded transition-all duration-200 cursor-pointer border ${isReady ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/40' : 'bg-violet-950/40 border-violet-500/40 text-violet-300 hover:bg-violet-900/40'}`}
+              >
+                {isReady ? '✓ Ready' : 'Ready Up'}
+              </button>
+
+              {isHost && (
+                <button 
+                  onClick={handleEnterDungeon}
+                  disabled={!canEnterDungeon}
+                  className={`px-5 py-2 font-bold text-xs uppercase rounded transition-all duration-200 cursor-pointer border ${canEnterDungeon ? 'bg-cyan-500 border-cyan-400 text-slate-950 hover:bg-cyan-400' : 'bg-slate-900 border-slate-800 text-slate-500 cursor-not-allowed opacity-50'}`}
+                >
+                  Enter Dungeon
+                </button>
+              )}
+
+              <button onClick={handleLeaveLobby} className="px-5 py-2 bg-red-950/20 border border-red-900/40 text-red-300 hover:text-white hover:bg-red-900/40 rounded transition-all duration-200 cursor-pointer">Leave Party</button>
+            </div>
           </header>
 
           <div className="flex-grow grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 min-h-0">
@@ -225,6 +288,9 @@ export default function LobbyPhase() {
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl bg-slate-900 border-2 shadow-lg relative group ${p.isHost ? 'border-amber-400 shadow-amber-500/10' : 'border-violet-500'}`}>
                         {presetData.icon}
                         {p.isHost && <span className="absolute -top-3.5 text-xs text-amber-400 drop-shadow">👑</span>}
+                        {p.ready && (
+                          <span className="absolute -bottom-1 -right-1 text-[9px] bg-emerald-500 text-white rounded-full w-4 h-4 flex items-center justify-center border border-slate-900 font-black shadow shadow-emerald-500/30">✓</span>
+                        )}
                         <div className="absolute bottom-11 scale-0 group-hover:scale-100 bg-slate-900 border border-slate-700/60 text-[10px] px-2 py-0.5 rounded text-white font-semibold whitespace-nowrap shadow-md transition-all duration-150 z-20 pointer-events-none">{p.name}</div>
                       </div>
                       <span className="text-[10px] text-slate-300 font-semibold bg-black/65 px-1.5 py-0.2 rounded mt-1 shadow-sm whitespace-nowrap">{p.name.split(' ')[0]}</span>
@@ -237,6 +303,14 @@ export default function LobbyPhase() {
             <PlayerList lobbyPlayers={lobbyPlayers} presets={CLASS_PRESETS} />
           </div>
         </div>
+      )}
+      {screen === 'combat' && combatData && (
+        <CombatPhase 
+          combatData={combatData} 
+          lobbyPlayers={lobbyPlayers} 
+          localPlayer={localHeroInLobby} 
+          onReturnToLobby={handleReturnToLobby} 
+        />
       )}
     </div>
   );

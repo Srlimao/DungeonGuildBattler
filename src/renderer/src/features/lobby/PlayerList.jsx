@@ -22,7 +22,14 @@ export default function PlayerList({ lobbyPlayers, presets }) {
                   <span className="text-[10px] text-slate-400">{p.class}</span>
                 </div>
               </div>
-              <span className="text-[10px] text-slate-500 font-mono">x: {p.x}, y: {p.y}</span>
+              <div className="flex flex-col items-end gap-1.5">
+                <span className="text-[9px] text-slate-500 font-mono">x: {p.x}, y: {p.y}</span>
+                {p.ready ? (
+                  <span className="text-[9px] px-1.5 py-0.5 font-extrabold uppercase rounded bg-emerald-950/60 text-emerald-400 border border-emerald-500/20">Ready</span>
+                ) : (
+                  <span className="text-[9px] px-1.5 py-0.5 font-extrabold uppercase rounded bg-slate-950 text-slate-500 border border-slate-900">Drafting</span>
+                )}
+              </div>
             </div>
           );
         })}

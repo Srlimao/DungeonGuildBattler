@@ -78,7 +78,8 @@ class SteamP2PManager {
         class: hostData.class || 'Warrior',
         x: 150,
         y: 200,
-        isHost: true
+        isHost: true,
+        ready: false
       };
       this.players = [hostPlayer];
       
@@ -115,7 +116,8 @@ class SteamP2PManager {
           class: hostData.class || 'Warrior',
           x: 150,
           y: 200,
-          isHost: true
+          isHost: true,
+          ready: false
         };
         this.players = [hostPlayer];
 
@@ -210,7 +212,8 @@ class SteamP2PManager {
           class: playerData.class || 'Mage',
           x: 350,
           y: 280,
-          isHost: false
+          isHost: false,
+          ready: false
         };
         this.players.push(newGuest);
         
@@ -270,7 +273,8 @@ class SteamP2PManager {
           class: hostClass,
           x: 150,
           y: 200,
-          isHost: true
+          isHost: true,
+          ready: false
         });
 
         // Add local guest
@@ -280,7 +284,8 @@ class SteamP2PManager {
           class: playerData.class || 'Mage',
           x: 350,
           y: 280,
-          isHost: false
+          isHost: false,
+          ready: false
         };
         this.players.push(localGuest);
 
@@ -294,7 +299,8 @@ class SteamP2PManager {
               class: 'Mage',
               x: 350,
               y: 280,
-              isHost: false
+              isHost: false,
+              ready: false
             });
           }
         }
@@ -306,7 +312,8 @@ class SteamP2PManager {
           name: steamName,
           class: localGuest.class,
           x: localGuest.x,
-          y: localGuest.y
+          y: localGuest.y,
+          ready: false
         });
         const buffer = Buffer.from(payload);
         for (const m of members) {
@@ -371,6 +378,98 @@ class SteamP2PManager {
     return { success: true, players: this.players };
   }
 
+  async sendReady(playerId, ready) {
+    const p = this.players.find(player => player.id === playerId);
+    if (p) {
+      p.ready = ready;
+    }
+    
+    if (!this.isMock && this.steamClient && this.steamLobby) {
+      try {
+        const payload = JSON.stringify({
+          type: 'READY_UPDATE',
+          playerId,
+          ready
+        });
+        const buffer = Buffer.from(payload);
+        const members = this.steamLobby.getMembers();
+        const steamIdStr = this.getLocalSteamId();
+        for (const m of members) {
+          const mIdStr = m.steamId64.toString();
+          if (mIdStr !== steamIdStr) {
+            try {
+              this.steamClient.networking.sendP2PPacket(m.steamId64, this.steamClient.networking.SendType.Reliable, buffer);
+            } catch (err) {
+              console.error(`Failed to send ready update to ${mIdStr}:`, err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to send Steam P2P ready update:", err);
+      }
+    }
+    
+    this.sendToRenderer('net-players-update', this.players);
+    return { success: true, players: this.players };
+  }
+
+  async startCombat(combatData) {
+    if (!this.isMock && this.steamClient && this.steamLobby) {
+      try {
+        const payload = JSON.stringify({
+          type: 'START_COMBAT',
+          combatData
+        });
+        const buffer = Buffer.from(payload);
+        const members = this.steamLobby.getMembers();
+        const steamIdStr = this.getLocalSteamId();
+        for (const m of members) {
+          const mIdStr = m.steamId64.toString();
+          if (mIdStr !== steamIdStr) {
+            try {
+              this.steamClient.networking.sendP2PPacket(m.steamId64, this.steamClient.networking.SendType.Reliable, buffer);
+            } catch (err) {
+              console.error(`Failed to send start combat to ${mIdStr}:`, err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to broadcast START_COMBAT:", err);
+      }
+    }
+    this.sendToRenderer('net-game-state-change', { screen: 'combat', combatData });
+    return { success: true };
+  }
+
+  async returnToLobby() {
+    this.players.forEach(p => p.ready = false);
+    if (!this.isMock && this.steamClient && this.steamLobby) {
+      try {
+        const payload = JSON.stringify({
+          type: 'RETURN_TO_LOBBY'
+        });
+        const buffer = Buffer.from(payload);
+        const members = this.steamLobby.getMembers();
+        const steamIdStr = this.getLocalSteamId();
+        for (const m of members) {
+          const mIdStr = m.steamId64.toString();
+          if (mIdStr !== steamIdStr) {
+            try {
+              this.steamClient.networking.sendP2PPacket(m.steamId64, this.steamClient.networking.SendType.Reliable, buffer);
+            } catch (err) {
+              console.error(`Failed to send return to lobby to ${mIdStr}:`, err);
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Failed to broadcast RETURN_TO_LOBBY:", err);
+      }
+    }
+    this.sendToRenderer('net-players-update', this.players);
+    this.sendToRenderer('net-game-state-change', { screen: 'guild-lobby' });
+    return { success: true };
+  }
+
   async simulateJoin() {
     if (!this.isMock && !this.lobbyId) return { success: false, error: "No active lobby" };
 
@@ -392,7 +491,8 @@ class SteamP2PManager {
       class: randomClass,
       x: startPos.x,
       y: startPos.y,
-      isHost: false
+      isHost: false,
+      ready: false
     };
 
     this.players.push(newFriend);
@@ -480,7 +580,8 @@ class SteamP2PManager {
                     class: payload.class,
                     x: payload.x,
                     y: payload.y,
-                    isHost: payload.playerId === hostId
+                    isHost: payload.playerId === hostId,
+                    ready: payload.ready || false
                   });
                   
                   // Reply with our own position so they know where we are!
@@ -492,7 +593,8 @@ class SteamP2PManager {
                       name: this.getLocalSteamName() || 'Steam Player',
                       class: localPlayer.class,
                       x: localPlayer.x,
-                      y: localPlayer.y
+                      y: localPlayer.y,
+                      ready: localPlayer.ready || false
                     });
                     try {
                       const peerId = BigInt(payload.playerId);
@@ -506,8 +608,23 @@ class SteamP2PManager {
                   existing.y = payload.y;
                   existing.name = payload.name;
                   existing.class = payload.class;
+                  if (payload.ready !== undefined) {
+                    existing.ready = payload.ready;
+                  }
                 }
                 this.sendToRenderer('net-players-update', this.players);
+              } else if (payload.type === 'READY_UPDATE') {
+                let existing = this.players.find(p => p.id === payload.playerId);
+                if (existing) {
+                  existing.ready = payload.ready;
+                  this.sendToRenderer('net-players-update', this.players);
+                }
+              } else if (payload.type === 'START_COMBAT') {
+                this.sendToRenderer('net-game-state-change', { screen: 'combat', combatData: payload.combatData });
+              } else if (payload.type === 'RETURN_TO_LOBBY') {
+                this.players.forEach(p => p.ready = false);
+                this.sendToRenderer('net-players-update', this.players);
+                this.sendToRenderer('net-game-state-change', { screen: 'guild-lobby' });
               }
             }
             size = this.steamClient.networking.isP2PPacketAvailable();
@@ -535,6 +652,9 @@ function initP2PHandlers() {
   ipcMain.handle('net-list-lobbies', () => manager.listLobbies());
   ipcMain.handle('net-join-lobby', (event, { lobbyId, playerData }) => manager.joinLobby(lobbyId, playerData));
   ipcMain.handle('net-send-position', (event, { playerId, x, y }) => manager.sendPosition(playerId, x, y));
+  ipcMain.handle('net-send-ready', (event, { playerId, ready }) => manager.sendReady(playerId, ready));
+  ipcMain.handle('net-start-combat', (event, { combatData }) => manager.startCombat(combatData));
+  ipcMain.handle('net-return-to-lobby', () => manager.returnToLobby());
   ipcMain.handle('net-simulate-join', () => manager.simulateJoin());
   ipcMain.handle('net-simulate-friend-move', () => manager.simulateFriendMove());
   ipcMain.handle('net-leave-lobby', () => manager.leaveLobby());

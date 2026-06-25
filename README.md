@@ -15,30 +15,6 @@ A phase-based, multiplayer 2D auto-battler built as a desktop application. Playe
 
 ---
 
-## 📁 Project Structure
-
-```
-/project-root
-├── /src
-│   ├── /main                  # Electron Main Process (System & Host Server)
-│   │   ├── index.js           # Electron initialization & window loader
-│   │   ├── preload.js         # IPC Bridge API
-│   │   ├── updater.js         # electron-updater logic (GitHub releases)
-│   │   └── /host_server       # Host Authoritative Logic
-│   │       └── SteamP2PManager.js # Steamworks P2P & simulated fallback logic
-│   ├── /renderer              # Electron Renderer Process (React App)
-│   │   ├── /src
-│   │   │   ├── /features      # Sliced game phase features
-│   │   │   │   └── /lobby     # STATE_LOBBY UI & logic
-│   │   │   └── App.jsx        # Main UI wrapper
-│   │   └── index.html         # UI HTML entry point
-│   └── /shared                # Shared constants and state definitions
-├── package.json
-└── tailwind.config.js
-```
-
----
-
 ## 🚀 Getting Started
 
 ### Prerequisites
