@@ -1,8 +1,8 @@
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
-const { setupP2PHandlers } = require('./host_server/SteamP2PManager');
-const { initUpdater } = require('./updater');
+const { initP2PHandlers, bindP2PWindow } = require('./host_server/SteamP2PManager');
+const { initUpdater, bindUpdaterWindow } = require('./updater');
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -17,8 +17,8 @@ function createWindow() {
     show: false
   });
 
-  setupP2PHandlers(mainWindow);
-  initUpdater(mainWindow);
+  bindP2PWindow(mainWindow);
+  bindUpdaterWindow(mainWindow);
 
   // Attempt to connect to local Vite dev server. If it fails, load production build.
   mainWindow.loadURL('http://localhost:5173')
@@ -33,6 +33,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Initialize handlers once globally
+  initP2PHandlers();
+  initUpdater();
+
   createWindow();
 
   app.on('activate', () => {
@@ -47,3 +51,4 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import CharacterSelect from './CharacterSelect';
 import LobbyPortal from './LobbyPortal';
 import PlayerList from './PlayerList';
+import { AppNetwork } from '../../services/AppNetwork';
 
 const CLASS_PRESETS = {
   Warrior: { hp: 140, atk: 18, def: 15, spd: 7, description: "Heavy frontline defender with high health and physical power.", icon: "⚔️", maxHp: 200, maxAtk: 30, maxDef: 30, maxSpd: 20, colorClass: "text-amber-400" },
@@ -41,25 +42,17 @@ export default function LobbyPhase() {
   }, []);
 
   useEffect(() => {
-    if (window.api?.onPlayersUpdate) {
-      return window.api.onPlayersUpdate((updatedPlayers) => setLobbyPlayers(updatedPlayers));
-    }
+    const unsubPlayers = AppNetwork.onPlayersUpdate((updatedPlayers) => {
+      setLobbyPlayers(updatedPlayers);
+    });
+    const unsubUpdate = AppNetwork.onUpdateStatus((info) => {
+      setUpdateInfo(info);
+    });
+    return () => {
+      unsubPlayers();
+      unsubUpdate();
+    };
   }, []);
-
-  useEffect(() => {
-    if (window.api?.onUpdateStatus) {
-      return window.api.onUpdateStatus((info) => setUpdateInfo(info));
-    }
-  }, []);
-
-  useEffect(() => {
-    let interval;
-    const hasMockFriends = lobbyPlayers.some(p => p.id && p.id.includes('mock'));
-    if (hasMockFriends && window.api?.simulateFriendMove) {
-      interval = setInterval(() => window.api.simulateFriendMove(), 3000);
-    }
-    return () => clearInterval(interval);
-  }, [lobbyPlayers]);
 
   const saveAndSetCharacters = (newChars) => {
     setCharacters(newChars);
@@ -95,40 +88,23 @@ export default function LobbyPhase() {
   };
 
   const fetchLobbies = async () => {
-    if (!window.api) {
-      setAvailableLobbies([
-        { id: "MOCK_LOBBY_1", name: "Valiant Shields Guild", hostName: "Soren", memberCount: 3, maxPlayers: 10 },
-        { id: "MOCK_LOBBY_2", name: "Arcane Spells Sanctum", hostName: "Eldrin", memberCount: 5, maxPlayers: 10 },
-        { id: "MOCK_LOBBY_3", name: "Dagger in the Dark", hostName: "Valera", memberCount: 2, maxPlayers: 10 }
-      ]);
-      return;
-    }
     try {
-      const list = await window.api.listLobbies();
+      const list = await AppNetwork.listLobbies();
       setAvailableLobbies(list || []);
     } catch (e) { console.error(e); }
   };
 
   const handleHostLobby = async (lobbyName) => {
     if (!selectedCharacter) return;
-    if (!window.api) {
-      const mockLobbyId = 'DG-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-      const hostData = { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class, x: 150, y: 200, isHost: true };
-      setActiveHero(hostData);
-      setLobbyPlayers([hostData]);
-      setActiveLobbyId(mockLobbyId);
-      setScreen('guild-lobby');
-      return;
-    }
     try {
-      const res = await window.api.createLobby({ 
+      const res = await AppNetwork.createLobby({ 
         id: selectedCharacter.id, 
         name: selectedCharacter.name, 
         class: selectedCharacter.class,
         lobbyName: lobbyName
       });
       if (res.success) {
-        setActiveHero(res.players.find(p => p.isHost));
+        setActiveHero(res.players.find(p => p.id === selectedCharacter.id) || res.players.find(p => p.isHost));
         setLobbyPlayers(res.players);
         setActiveLobbyId(res.lobbyId);
         setIsNetworkMock(res.isMock);
@@ -139,20 +115,8 @@ export default function LobbyPhase() {
 
   const handleJoinLobby = async (lobbyIdToJoin) => {
     if (!selectedCharacter) return;
-    if (!window.api) {
-      const joinData = { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class, x: 350, y: 280, isHost: false };
-      const startPlayers = lobbyIdToJoin === 'MOCK_LOBBY_1' ? [
-        { id: "mock_host_1", name: "Soren (Host)", class: "Warrior", x: 150, y: 200, isHost: true },
-        { id: "mock_guest_1a", name: "Kaelen", class: "Mage", x: 280, y: 260, isHost: false }
-      ] : [{ id: "mock_host_gen", name: "Eldrin (Host)", class: "Mage", x: 150, y: 200, isHost: true }];
-      setActiveHero(joinData);
-      setLobbyPlayers([...startPlayers, joinData]);
-      setActiveLobbyId(lobbyIdToJoin);
-      setScreen('guild-lobby');
-      return;
-    }
     try {
-      const res = await window.api.joinLobby(lobbyIdToJoin, { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class });
+      const res = await AppNetwork.joinLobby(lobbyIdToJoin, { id: selectedCharacter.id, name: selectedCharacter.name, class: selectedCharacter.class });
       if (res.success) {
         const localHero = res.players.find(p => p.id === res.localPlayerId) || res.players.find(p => p.id === selectedCharacter.id);
         setActiveHero(localHero);
@@ -167,12 +131,10 @@ export default function LobbyPhase() {
   const handleLeaveLobby = async () => {
     setActiveLobbyId(null);
     setScreen('list');
-    if (window.api?.leaveLobby) {
-      try {
-        await window.api.leaveLobby();
-      } catch (e) {
-        console.error(e);
-      }
+    try {
+      await AppNetwork.leaveLobby();
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -182,23 +144,18 @@ export default function LobbyPhase() {
     const clickX = Math.max(20, Math.min(Math.round(e.clientX - rect.left), rect.width - 20));
     const clickY = Math.max(20, Math.min(Math.round(e.clientY - rect.top), rect.height - 20));
     setLobbyPlayers(prev => prev.map(p => p.id === activeHero.id ? { ...p, x: clickX, y: clickY } : p));
-    if (window.api) {
-      try { await window.api.sendPosition(activeHero.id, clickX, clickY); } catch (err) { console.error(err); }
+    try {
+      await AppNetwork.sendPosition(activeHero.id, clickX, clickY);
+    } catch (err) {
+      console.error(err);
     }
   };
 
   const addSimulatedFriend = async () => {
-    if (window.api) {
-      try {
-        const res = await window.api.simulateJoin();
-        if (res.success) setLobbyPlayers(res.players);
-      } catch (e) { console.error(e); }
-    } else {
-      const names = ["Mika", "Soren", "Eldrin", "Valera"];
-      const classes = ["Mage", "Rogue", "Cleric", "Warrior"];
-      const newFriend = { id: 'browser_mock_' + Date.now(), name: names[Math.floor(Math.random() * names.length)] + ` #${lobbyPlayers.length}`, class: classes[Math.floor(Math.random() * classes.length)], x: Math.random() * 300 + 100, y: Math.random() * 200 + 100, isHost: false };
-      setLobbyPlayers(prev => [...prev, newFriend]);
-    }
+    try {
+      const res = await AppNetwork.simulateJoin();
+      if (res.success) setLobbyPlayers(res.players);
+    } catch (e) { console.error(e); }
   };
 
   return (
@@ -212,7 +169,7 @@ export default function LobbyPhase() {
             {updateInfo.status === 'downloaded' && <span>Update v{updateInfo.version} downloaded successfully!</span>}
           </div>
           {updateInfo.status === 'downloaded' && (
-            <button onClick={() => window.api?.installUpdate()} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1 rounded transition-colors duration-200 cursor-pointer">Restart & Install</button>
+            <button onClick={() => AppNetwork.installUpdate()} className="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold px-3 py-1 rounded transition-colors duration-200 cursor-pointer">Restart & Install</button>
           )}
         </div>
       )}

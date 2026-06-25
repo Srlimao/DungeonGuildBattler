@@ -2,8 +2,8 @@ const { ipcMain } = require('electron');
 const { MOCK_LOBBIES, START_POSITIONS } = require('./mockData');
 
 class SteamP2PManager {
-  constructor(mainWindow) {
-    this.mainWindow = mainWindow;
+  constructor() {
+    this.mainWindow = null;
     this.steamClient = null;
     this.isMock = false;
     this.lobbyId = null;
@@ -11,6 +11,16 @@ class SteamP2PManager {
     this.nextMockId = 1;
     this.steamLobby = null;
     this.pollingInterval = null;
+  }
+
+  setMainWindow(mainWindow) {
+    this.mainWindow = mainWindow;
+  }
+
+  sendToRenderer(channel, ...args) {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send(channel, ...args);
+    }
   }
 
   getLocalSteamId() {
@@ -210,7 +220,7 @@ class SteamP2PManager {
       }
 
       console.log(`Mock Joined Lobby: ${this.lobbyId} (Count: ${this.players.length}/10)`);
-      this.mainWindow.webContents.send('net-players-update', this.players);
+      this.sendToRenderer('net-players-update', this.players);
       return { success: true, lobbyId: this.lobbyId, players: this.players, isMock: true, localPlayerId: guestId };
     } else {
       try {
@@ -357,7 +367,7 @@ class SteamP2PManager {
     }
     
     // Broadcast updated players list back to renderer
-    this.mainWindow.webContents.send('net-players-update', this.players);
+    this.sendToRenderer('net-players-update', this.players);
     return { success: true, players: this.players };
   }
 
@@ -394,7 +404,7 @@ class SteamP2PManager {
       match.memberCount = this.players.length;
     }
 
-    this.mainWindow.webContents.send('net-players-update', this.players);
+    this.sendToRenderer('net-players-update', this.players);
     return { success: true, players: this.players };
   }
 
@@ -413,7 +423,7 @@ class SteamP2PManager {
         if (p.y > 350) p.y = 350;
       }
     });
-    this.mainWindow.webContents.send('net-players-update', this.players);
+    this.sendToRenderer('net-players-update', this.players);
     return { success: true, players: this.players };
   }
 
@@ -497,7 +507,7 @@ class SteamP2PManager {
                   existing.name = payload.name;
                   existing.class = payload.class;
                 }
-                this.mainWindow.webContents.send('net-players-update', this.players);
+                this.sendToRenderer('net-players-update', this.players);
               }
             }
             size = this.steamClient.networking.isP2PPacketAvailable();
@@ -516,8 +526,9 @@ class SteamP2PManager {
   }
 }
 
-function setupP2PHandlers(mainWindow) {
-  const manager = new SteamP2PManager(mainWindow);
+const manager = new SteamP2PManager();
+
+function initP2PHandlers() {
   manager.setup();
 
   ipcMain.handle('net-create-lobby', (event, hostData) => manager.createLobby(hostData));
@@ -529,6 +540,11 @@ function setupP2PHandlers(mainWindow) {
   ipcMain.handle('net-leave-lobby', () => manager.leaveLobby());
 }
 
+function bindP2PWindow(mainWindow) {
+  manager.setMainWindow(mainWindow);
+}
+
 module.exports = {
-  setupP2PHandlers
+  initP2PHandlers,
+  bindP2PWindow
 };
