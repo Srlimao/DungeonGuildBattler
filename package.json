@@ -1,6 +1,6 @@
 {
   "name": "dungeon-guild-battler",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Multiplayer 2D Auto-Battler Client & Server",
   "main": "src/main/index.js",
   "scripts": {
@@ -17,6 +17,7 @@
   "build": {
     "files": [
       "src/main/**/*",
+      "src/shared/**/*",
       "src/renderer/dist/**/*",
       "package.json"
     ],
